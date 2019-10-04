@@ -11,8 +11,10 @@ import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.os.Build;
+import android.os.Handler;
 import android.util.Log;
 
 import androidx.annotation.RequiresApi;
@@ -25,6 +27,7 @@ import static android.content.Context.JOB_SCHEDULER_SERVICE;
 public class RestartServiceBroadcastReceiver extends BroadcastReceiver {
     public static final String TAG = RestartServiceBroadcastReceiver.class.getSimpleName();
     private static JobScheduler jobScheduler;
+    private RestartServiceBroadcastReceiver restartSensorServiceReceiver;
 
     /**
      * it returns the number of version code
@@ -53,6 +56,7 @@ public class RestartServiceBroadcastReceiver extends BroadcastReceiver {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
             scheduleJob(context);
         } else {
+            registerRestarterReceiver(context);
             ProcessMainClass bck = new ProcessMainClass();
             bck.launchService(context);
         }
@@ -80,6 +84,42 @@ public class RestartServiceBroadcastReceiver extends BroadcastReceiver {
         Log.i(TAG, "Restarting tracker");
         Intent broadcastIntent = new Intent(Globals.RESTART_INTENT);
         context.sendBroadcast(broadcastIntent);
+    }
+
+
+    private void registerRestarterReceiver(final Context context) {
+
+        // the context can be null if app just installed and this is called from restartsensorservice
+        // https://stackoverflow.com/questions/24934260/intentreceiver-components-are-not-allowed-to-register-to-receive-intents-when
+        // Final decision: in case it is called from installation of new version (i.e. from manifest, the application is
+        // null. So we must use context.registerReceiver. Otherwise this will crash and we try with context.getApplicationContext
+        if (restartSensorServiceReceiver == null)
+            restartSensorServiceReceiver = new RestartServiceBroadcastReceiver();
+        else try{
+            context.unregisterReceiver(restartSensorServiceReceiver);
+        } catch (Exception e){
+            // not registered
+        }
+        // give the time to run
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                // we register the  receiver that will restart the background service if it is killed
+                // see onDestroy of Service
+                IntentFilter filter = new IntentFilter();
+                filter.addAction(Globals.RESTART_INTENT);
+                try {
+                    context.registerReceiver(restartSensorServiceReceiver, filter);
+                } catch (Exception e) {
+                    try {
+                        context.getApplicationContext().registerReceiver(restartSensorServiceReceiver, filter);
+                    } catch (Exception ex) {
+
+                    }
+                }
+            }
+        }, 1000);
+
     }
 
 }
