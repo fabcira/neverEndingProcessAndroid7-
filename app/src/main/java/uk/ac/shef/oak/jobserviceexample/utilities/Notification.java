@@ -23,12 +23,15 @@ public class Notification {
     /**
      * This is the method  called to create the Notification
      */
-    public android.app.Notification setNotification(Context context, String title, String text, int icon) {
+    public android.app.Notification setNotification(Context context,
+                                                    String title,
+                                                    String text, int icon) {
         if (notificationPendingIntent == null) {
             Intent notificationIntent = new Intent(context, MainActivity.class);
             notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             // notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            notificationPendingIntent = PendingIntent.getActivity(context, 0, notificationIntent, 0);
+            notificationPendingIntent = PendingIntent.getActivity(context,
+                    0, notificationIntent, 0);
         }
 
         android.app.Notification notification;
